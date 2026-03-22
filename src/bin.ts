@@ -81,6 +81,7 @@ program
     }
     clearSession(SESSION_PATH);
     try { fs.unlinkSync(PID_PATH); } catch { /* ignore */ }
+    try { fs.unlinkSync(SOCKET_PATH); } catch { /* ignore */ }
     console.log('✅ 已登出（消息记录已保留）。');
   });
 
@@ -168,8 +169,15 @@ program
           console.log('○  服务未运行');
           return;
         }
-        const pid = fs.readFileSync(PID_PATH, 'utf-8').trim();
-        console.log(`● 服务运行中 (PID: ${pid})  (无法连接到 socket)`);
+        const pid = parseInt(fs.readFileSync(PID_PATH, 'utf-8').trim(), 10);
+        try {
+          process.kill(pid, 0);
+          console.log(`● 服务运行中 (PID: ${pid})  (无法连接到 socket)`);
+        } catch {
+          try { fs.unlinkSync(PID_PATH); } catch { /* ignore */ }
+          try { fs.unlinkSync(SOCKET_PATH); } catch { /* ignore */ }
+          console.log('○  服务未运行 (已清理残留文件)');
+        }
       } catch {
         console.log('○  服务未运行');
       }
