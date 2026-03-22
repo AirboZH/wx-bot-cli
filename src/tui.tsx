@@ -14,7 +14,11 @@ type ServiceStatus =
   | { state: 'expired' }
   | { state: 'error' };
 
-export function App() {
+type Props = {
+  onLoginRequested?: () => void;
+};
+
+export function App({ onLoginRequested }: Props) {
   const { exit } = useApp();
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [status, setStatus] = useState<ServiceStatus>({ state: 'stopped' });
@@ -24,6 +28,10 @@ export function App() {
   useInput((input) => {
     if (input === 'q' || input === 'Q') exit();
     if (input === 'r' || input === 'R') pollAll();
+    if ((input === 'l' || input === 'L') && !session) {
+      onLoginRequested?.();
+      exit();
+    }
   });
 
   async function pollAll() {
@@ -73,6 +81,21 @@ export function App() {
 
   const runningData = status.state === 'running' ? status.data : null;
   const remaining = runningData && !runningData.exhausted ? runningData.remaining : null;
+
+  if (!session) {
+    return (
+      <Box flexDirection="column" padding={2}>
+        <Box borderStyle="single" paddingX={1} marginBottom={1}>
+          <Text bold>wx bot cli</Text>
+        </Box>
+        <Box flexDirection="column" paddingX={1} gap={1}>
+          <Text color="red">○ 未登录</Text>
+          <Text>尚未登录微信账号。</Text>
+          <Text dimColor>按 [L] 扫码登录  /  按 [Q] 退出</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" height="100%">

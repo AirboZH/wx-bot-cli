@@ -25,8 +25,31 @@ program
 // Default action: open TUI
 program
   .action(async () => {
-    const { waitUntilExit } = render(React.createElement(App));
+    let loginRequested = false;
+    const { waitUntilExit } = render(
+      React.createElement(App, { onLoginRequested: () => { loginRequested = true; } })
+    );
     await waitUntilExit();
+
+    if (loginRequested) {
+      if (isServiceRunning()) {
+        console.log('正在停止已有服务...');
+        uninstallService();
+      }
+      try {
+        const session = await loginWithQr(DEFAULT_BASE_URL);
+        saveSession(SESSION_PATH, session);
+        console.log('正在安装系统服务...');
+        installService();
+        console.log('服务已启动，即将打开看板...');
+        await new Promise((r) => setTimeout(r, 1500));
+        const { waitUntilExit: waitAgain } = render(React.createElement(App));
+        await waitAgain();
+      } catch (err) {
+        console.error(`登录失败: ${String(err)}`);
+        process.exit(1);
+      }
+    }
   });
 
 // wxbot login
