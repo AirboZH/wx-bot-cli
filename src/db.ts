@@ -19,8 +19,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 export function openDb(filePath: string, readonly = false): DbInstance {
   const db = new Database(filePath, { readonly });
   if (!readonly) {
-    db.exec(SCHEMA);
     db.pragma('journal_mode = WAL');
+    db.exec(SCHEMA);
   }
   return db;
 }
