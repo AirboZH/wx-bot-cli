@@ -174,6 +174,23 @@ export async function runService(): Promise<void> {
   });
   logLine('INFO', 'IPC server listening', { socket: SOCKET_PATH });
 
+  // ---- Graceful shutdown ----------------------------------------------------
+  function gracefulShutdown(exitCode: number): void {
+    try { server.close(); } catch { /* ignore */ }
+    try { fs.unlinkSync(SOCKET_PATH); } catch { /* ignore */ }
+    try { fs.unlinkSync(PID_PATH); } catch { /* ignore */ }
+    try { checkpointWal(db); } catch { /* ignore */ }
+    logLine('INFO', 'service stopped gracefully');
+    process.exit(exitCode);
+  }
+
+  process.on('SIGTERM', () => gracefulShutdown(0));
+  process.on('SIGINT',  () => gracefulShutdown(0));
+  process.on('uncaughtException', (err) => {
+    logLine('ERROR', 'uncaught exception', { err: String(err) });
+    gracefulShutdown(1);
+  });
+
   // ---- Long-poll loop -------------------------------------------------------
   let getUpdatesBuf = '';
   let consecutiveFailures = 0;
@@ -246,6 +263,6 @@ export async function runService(): Promise<void> {
     }
   }
 
-  logLine('INFO', 'poll loop stopped');
-  // Keep server alive so status IPC still works
+  logLine('INFO', 'poll loop stopped, session expired — exiting for launchd restart');
+  gracefulShutdown(0);
 }
