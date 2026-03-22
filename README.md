@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-![wxbot TUI 界面](docs/images/hero.png)
+![wxbot TUI 界面](https://github.com/AirboZH/wx-bot-cli/raw/main/docs/images/hero.png)
 
 `wxbot` 是一个微信机器人命令行工具，基于微信 iLink API，提供扫码登录、消息收发、SQLite 持久化存储，以及 Ink 终端看板（TUI）。
 
