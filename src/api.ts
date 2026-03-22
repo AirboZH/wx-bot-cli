@@ -87,6 +87,46 @@ export async function apiGet(params: {
   }
 }
 
+export async function getConfig(params: {
+  baseUrl: string;
+  token: string;
+  ilinkUserId: string;
+  contextToken?: string;
+}): Promise<{ typingTicket: string }> {
+  const resp = await apiPost({
+    baseUrl: params.baseUrl,
+    endpoint: 'ilink/bot/getconfig',
+    body: {
+      ilink_user_id: params.ilinkUserId,
+      context_token: params.contextToken,
+      base_info: { channel_version: 'standalone' },
+    },
+    token: params.token,
+    timeoutMs: 10_000,
+  }) as { ret?: number; typing_ticket?: string };
+  return { typingTicket: resp.typing_ticket ?? '' };
+}
+
+export async function sendTyping(params: {
+  baseUrl: string;
+  token: string;
+  ilinkUserId: string;
+  typingTicket: string;
+}): Promise<void> {
+  await apiPost({
+    baseUrl: params.baseUrl,
+    endpoint: 'ilink/bot/sendtyping',
+    body: {
+      ilink_user_id: params.ilinkUserId,
+      typing_ticket: params.typingTicket,
+      status: 1,
+      base_info: { channel_version: 'standalone' },
+    },
+    token: params.token,
+    timeoutMs: 10_000,
+  });
+}
+
 export async function sendTextMessage(params: {
   baseUrl: string;
   token: string;

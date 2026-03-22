@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import net from 'node:net';
-import { apiPost, LONG_POLL_TIMEOUT_MS } from './api.js';
-import { sendTextMessage } from './api.js';
+import { apiPost, LONG_POLL_TIMEOUT_MS, sendTextMessage, getConfig, sendTyping } from './api.js';
 import { loadSession } from './auth.js';
 import { openDb, insertMessage, countMessages, checkpointWal } from './db.js';
 import { createIpcServer } from './ipc.js';
@@ -13,6 +12,7 @@ import type { IpcRequest, IpcResponse, UserSession } from './types.js';
 export type ServiceState = {
   activeUser: string | null;
   sessions: Map<string, UserSession>;
+  typingTickets: Map<string, string>;
   lastPollAt: string;
   sessionExpired: boolean;
   startedAt: number;
@@ -22,6 +22,7 @@ export function createUserSessionState(): ServiceState {
   return {
     activeUser: null,
     sessions: new Map(),
+    typingTickets: new Map(),
     lastPollAt: new Date().toISOString(),
     sessionExpired: false,
     startedAt: Date.now(),
@@ -235,6 +236,22 @@ export async function runService(): Promise<void> {
         const contextToken = msg.context_token ?? '';
         if (from && contextToken) {
           processInboundMessage(state, { fromUserId: from, contextToken });
+        }
+        if (from) {
+          const ticket = state.typingTickets.get(from);
+          if (ticket) {
+            sendTyping({ baseUrl: session.baseUrl, token: session.token, ilinkUserId: from, typingTicket: ticket })
+              .catch((err) => logLine('WARN', 'sendTyping error', { err: String(err) }));
+          } else {
+            getConfig({ baseUrl: session.baseUrl, token: session.token, ilinkUserId: from, contextToken })
+              .then(({ typingTicket }) => {
+                if (typingTicket) {
+                  state.typingTickets.set(from, typingTicket);
+                  return sendTyping({ baseUrl: session.baseUrl, token: session.token, ilinkUserId: from, typingTicket });
+                }
+              })
+              .catch((err) => logLine('WARN', 'getConfig/sendTyping error', { err: String(err) }));
+          }
         }
         const texts = (msg.item_list ?? [])
           .filter((i) => i.type === 1)
