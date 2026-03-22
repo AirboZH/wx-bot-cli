@@ -47,8 +47,7 @@ WantedBy=default.target`;
 
 // ---- Install / uninstall ----------------------------------------------------
 
-export function installService(): void {
-  const wxbotBin = process.argv[1]; // path to the compiled wxbot bin
+export function installService(wxbotBin = process.argv[1]): void {
   const logPath = LOG_PATH;
 
   if (PLATFORM === 'darwin') {

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadSession, saveSession, clearSession } from './auth.js';
 import { fetchQrCode, generateQrPng, checkQrStatus } from './auth-headless.js';
 import { openDb, getRecentMessages } from './db.js';
@@ -149,9 +151,14 @@ export async function handleLogout(
   state: McpState
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   stopEmbeddedLoop(state);
+  // In IPC mode the daemon is an external process — stop it too
+  if (state.mode === 'ipc') {
+    try { uninstallService(); } catch { /* best-effort */ }
+  }
   clearSession(SESSION_PATH);
   state.session = null;
   state.pendingQr = null;
+  state.mode = 'idle';
   return { content: [{ type: 'text', text: '✅ 已退出登录，微信连接已断开。' }] };
 }
 
@@ -278,11 +285,17 @@ export async function handleStatus(
   };
 }
 
+// Resolve the wxbot CLI binary (bin.js) from the MCP server binary location.
+// process.argv[1] points to mcp-server.js; bin.js lives in the same dist/ directory.
+function resolveWxbotBin(): string {
+  return path.join(path.dirname(fileURLToPath(import.meta.url)), 'bin.js');
+}
+
 export async function handleServiceStart(): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   if (isServiceRunning()) {
     return { content: [{ type: 'text', text: '⚠️ 后台服务已在运行中。' }] };
   }
-  installService();
+  installService(resolveWxbotBin());
   return { content: [{ type: 'text', text: '✅ 后台服务已启动并设置为开机自启。' }] };
 }
 
